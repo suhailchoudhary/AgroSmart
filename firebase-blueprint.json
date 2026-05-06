@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["farmer", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "SoilRecord": {
+      "title": "Soil Record",
+      "description": "Historical soil analysis data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "mode": { "type": "string", "enum": ["farmer", "technical"] },
+        "nitrogen": { "type": "number" },
+        "phosphorus": { "type": "number" },
+        "potassium": { "type": "number" },
+        "ph": { "type": "number" },
+        "soilType": { "type": "string" },
+        "region": { "type": "string" },
+        "temperature": { "type": "number" },
+        "humidity": { "type": "number" },
+        "rainfall": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "recommendations": { "type": "array", "items": { "type": "object" } }
+      },
+      "required": ["uid", "timestamp"]
+    },
+    "DiseaseReport": {
+      "title": "Disease Report",
+      "description": "Record of crop disease detection",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "disease": { "type": "string" },
+        "confidence": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "symptoms": { "type": "array", "items": { "type": "string" } },
+        "treatment": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["uid", "disease", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "soil_records/{recordId}": {
+      "schema": "SoilRecord",
+      "description": "Soil analysis history"
+    },
+    "disease_reports/{reportId}": {
+      "schema": "DiseaseReport",
+      "description": "Disease detection history"
+    }
+  }
+}

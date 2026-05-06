@@ -1,0 +1,10 @@
+{
+  "name": "AgroSmart",
+  "description": "Advanced AI-powered Smart Agriculture Platform for crop recommendation, disease detection, and market insights.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": []
+}
