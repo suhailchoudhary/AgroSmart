@@ -70,7 +70,7 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() &&
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "a84960299@gmail.com" && request.auth.token.email_verified == true));
+          (request.auth.token.email == "suhailchoudhary41@gmail.com" && request.auth.token.email_verified == true));
     }
 
     function hasRequiredFields(fields) {
@@ -138,6 +138,14 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidDiseaseReport(request.resource.data);
       allow update: if (isDocOwner() && isValidDiseaseReport(request.resource.data) && uidNotModified()) || isAdmin();
       allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /system/stats {
+      allow read: if true;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['visitCount']) &&
+                    request.resource.data.visitCount == resource.data.visitCount + 1;
+      allow create: if request.resource.data.keys().hasAll(['visitCount']) &&
+                    request.resource.data.visitCount == 1;
     }
 
     // Default deny

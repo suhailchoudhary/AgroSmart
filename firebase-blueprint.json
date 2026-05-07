@@ -49,6 +49,15 @@
         "treatment": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["uid", "disease", "timestamp"]
+    },
+    "SystemStats": {
+      "title": "System Stats",
+      "description": "Global application statistics",
+      "type": "object",
+      "properties": {
+        "visitCount": { "type": "number" }
+      },
+      "required": ["visitCount"]
     }
   },
   "firestore": {
@@ -63,6 +72,10 @@
     "disease_reports/{reportId}": {
       "schema": "DiseaseReport",
       "description": "Disease detection history"
+    },
+    "system/stats": {
+      "schema": "SystemStats",
+      "description": "Global visit counter"
     }
   }
 }

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, increment, updateDoc, onSnapshot } from 'firebase/firestore';
 import Dashboard from './components/Dashboard';
 import CropRecommendation from './components/CropRecommendation';
 import DiseaseDetection from './components/DiseaseDetection';
@@ -42,7 +42,39 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [visitCount, setVisitCount] = useState<number | null>(null);
   const { language, setLanguage, t } = useLanguage();
+
+  useEffect(() => {
+    // Increment global visit counter once per session
+    const incrementCounter = async () => {
+      const statsRef = doc(db, 'system', 'stats');
+      try {
+        const statsSnap = await getDoc(statsRef);
+        if (!statsSnap.exists()) {
+          await setDoc(statsRef, { visitCount: 1 });
+        } else if (!sessionStorage.getItem('visited')) {
+          await updateDoc(statsRef, {
+            visitCount: increment(1)
+          });
+          sessionStorage.setItem('visited', 'true');
+        }
+      } catch (error) {
+        console.error('Error incrementing visit counter:', error);
+      }
+    };
+
+    // Listen for real-time updates
+    const statsRef = doc(db, 'system', 'stats');
+    const unsubscribeStats = onSnapshot(statsRef, (doc) => {
+      if (doc.exists()) {
+        setVisitCount(doc.data().visitCount);
+      }
+    });
+
+    incrementCounter();
+    return () => unsubscribeStats();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -166,7 +198,25 @@ function AppContent() {
             </nav>
 
             {/* Bottom Actions */}
-            <div className="pt-4 border-t border-zinc-100 space-y-1">
+            <div className="mt-auto pt-4 border-t border-zinc-100 space-y-1">
+              {/* Visit Counter */}
+              {visitCount !== null && (
+                <div className={cn(
+                  "px-3 py-2 mb-2 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center gap-3 transition-opacity duration-300",
+                  !isSidebarOpen && "justify-center px-0"
+                )}>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  {isSidebarOpen && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tight leading-none mb-0.5">Visits</span>
+                      <span className="text-sm font-bold text-zinc-900 leading-none">{visitCount.toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 transition-all">
                 <Settings className="w-5 h-5" />
                 {isSidebarOpen && <span>{t('common.settings')}</span>}
