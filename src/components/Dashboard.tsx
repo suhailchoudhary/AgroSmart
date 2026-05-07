@@ -96,7 +96,10 @@ export default function Dashboard() {
           } catch (e) {
             console.error(e);
           }
-        });
+        }, (err) => {
+          console.error("Dashboard geolocation error:", err);
+          // Fallback fetch with a default or last known location would be here
+        }, { timeout: 8000 });
       }
     };
 

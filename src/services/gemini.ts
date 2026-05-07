@@ -3,6 +3,7 @@ import { SoilData, RecommendationResult, DiseaseDetectionResult } from "../types
 import { CROP_RECOMMENDATION_DATASET } from "../data/crop_dataset";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 export const simulateModelTraining = async (): Promise<{ accuracy: number; datasetSize: number; lastTrained: string }> => {
   // Simulate a training process on the large 2200-record Kaggle dataset
@@ -123,7 +124,16 @@ export const detectCropDisease = async (base64Image: string, language: string = 
   }
 };
 
+const insightCache: Record<string, { data: any, timestamp: number }> = {};
+
 export const getMarketInsights = async (location: string, language: string = 'en', model: string = "gemini-3-flash-preview"): Promise<any> => {
+  const cacheKey = `${location}-${language}`;
+  const now = Date.now();
+
+  if (insightCache[cacheKey] && (now - insightCache[cacheKey].timestamp) < CACHE_DURATION) {
+    return insightCache[cacheKey].data;
+  }
+
   const prompt = `
     Provide current and predicted market prices for major crops in ${location} using real-time data from Google Search.
     Language: ${language}.
@@ -171,5 +181,7 @@ export const getMarketInsights = async (location: string, language: string = 'en
     },
   });
 
-  return JSON.parse(response.text || "{}");
+  const result = JSON.parse(response.text || "{}");
+  insightCache[cacheKey] = { data: result, timestamp: now };
+  return result;
 };

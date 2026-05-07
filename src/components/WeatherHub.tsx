@@ -42,13 +42,16 @@ export default function WeatherHub() {
   const { t, language } = useLanguage();
   const [location, setLocation] = useState(t('common.detectingLocation'));
   const [loading, setLoading] = useState(false);
+  const [detectionSlow, setDetectionSlow] = useState(false);
   const [weather, setWeather] = useState<WeatherData | null>(null);
 
-  const fetchWeather = async () => {
+  const fetchWeatherForLocation = async (locName: string) => {
     setLoading(true);
+    setDetectionSlow(false);
     try {
-      const data = await getWeatherData(location, language);
+      const data = await getWeatherData(locName, language);
       setWeather(data);
+      if (data.locationName) setLocation(data.locationName);
     } catch (error) {
       console.error(error);
     } finally {
@@ -57,17 +60,21 @@ export default function WeatherHub() {
   };
 
   useEffect(() => {
+    const slowDetector = setTimeout(() => {
+      if (loading && location === t('common.detectingLocation')) {
+        setDetectionSlow(true);
+      }
+    }, 5000);
+
     const detectLocation = () => {
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             const { latitude, longitude } = position.coords;
-            // Use coordinates to fetch weather
             setLoading(true);
             try {
               const data = await getWeatherData(`${latitude}, ${longitude}`, language);
               setWeather(data);
-              // Update location string if the data includes a location name
               if (data.locationName) {
                 setLocation(data.locationName);
               } else {
@@ -75,22 +82,24 @@ export default function WeatherHub() {
               }
             } catch (error) {
               console.error("Error fetching weather for coordinates:", error);
-              fetchWeather(); // Fallback to default
+              fetchWeatherForLocation("New Delhi");
             } finally {
               setLoading(false);
             }
           },
           (error) => {
             console.error("Geolocation error:", error);
-            fetchWeather(); // Fallback to default
-          }
+            fetchWeatherForLocation("New Delhi");
+          },
+          { timeout: 10000 }
         );
       } else {
-        fetchWeather();
+        fetchWeatherForLocation("New Delhi");
       }
     };
 
     detectLocation();
+    return () => clearTimeout(slowDetector);
   }, []);
 
   const getWeatherIcon = (condition: string) => {
@@ -116,6 +125,11 @@ export default function WeatherHub() {
             className="bg-transparent border-none focus:ring-0 text-lg font-bold text-zinc-900 w-full"
             placeholder={t('common.searchLocation')}
           />
+          {detectionSlow && (
+            <span className="text-[10px] text-amber-600 font-bold animate-pulse whitespace-nowrap hidden md:block">
+              {t('common.detectionTakingLonger')}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto">
           <button 
@@ -144,7 +158,7 @@ export default function WeatherHub() {
             <Navigation className="w-5 h-5" />
           </button>
           <button 
-            onClick={fetchWeather}
+            onClick={() => fetchWeatherForLocation(location)}
             disabled={loading}
             className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center gap-2 disabled:opacity-50 flex-1 md:flex-none"
           >

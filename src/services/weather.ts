@@ -2,10 +2,21 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
+const weatherCache: Record<string, { data: any, timestamp: number }> = {};
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
 export const getWeatherData = async (location: string, language: string = 'en', model: string = "gemini-3-flash-preview") => {
+  const cacheKey = `${location}-${language}`;
+  const now = Date.now();
+
+  if (weatherCache[cacheKey] && (now - weatherCache[cacheKey].timestamp) < CACHE_DURATION) {
+    return weatherCache[cacheKey].data;
+  }
+
   const prompt = `
-    Get the REAL-TIME current weather and 7-day forecast for ${location} using Google Search.
-    Language: ${language}.
+    Using Google Search, provide current weather and 7-day forecast for: ${location}.
+    If ${location} looks like coordinates (lat, lon), first identify the city/town name.
+    Response language: ${language}.
   `;
 
   const response = await ai.models.generateContent({
@@ -54,23 +65,26 @@ export const getWeatherData = async (location: string, language: string = 'en', 
 
   try {
     const data = JSON.parse(response.text || "{}");
-    return {
-      locationName: data.locationName || "Unknown Location",
+    const result = {
+      locationName: data.locationName || location,
       current: {
         temp: data.current?.temp ?? 25,
         humidity: data.current?.humidity ?? 60,
-        condition: data.current?.condition || "Partly Cloudy",
+        condition: data.current?.condition || "Cloudy",
         windSpeed: data.current?.windSpeed ?? 10,
         predictedRainfall: data.current?.predictedRainfall || "0mm"
       },
       forecast: Array.isArray(data.forecast) ? data.forecast : [],
       alerts: Array.isArray(data.alerts) ? data.alerts : ["No active alerts"]
     };
+
+    weatherCache[cacheKey] = { data: result, timestamp: now };
+    return result;
   } catch (e) {
     console.error("Failed to parse weather data", e);
     return {
-      locationName: "Unknown Location",
-      current: { temp: 25, humidity: 60, condition: "Partly Cloudy", windSpeed: 10, predictedRainfall: "0mm" },
+      locationName: location,
+      current: { temp: 25, humidity: 60, condition: "Cloudy", windSpeed: 10, predictedRainfall: "0mm" },
       forecast: [],
       alerts: ["Weather data temporarily unavailable"]
     };
